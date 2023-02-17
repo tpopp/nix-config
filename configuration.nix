@@ -7,7 +7,6 @@
 {
   imports =
     [ # Include the results of the hardware scan.
-      ./machine/deskmini-x300.nix
     ];
 
 

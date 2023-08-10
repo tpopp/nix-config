@@ -8,31 +8,47 @@
     [ (modulesPath + "/installer/scan/not-detected.nix")
     ];
 
-  boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "sd_mod" ];
-  boot.initrd.kernelModules = [ ];
-  boot.kernelModules = [ "kvm-amd" ];
+  boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usb_storage" "usbhid" "sd_mod" ];
+  boot.initrd.kernelModules = [ "dm-snapshot" "amdgpu"];
+  boot.kernelModules = [ "kvm-amd" "lz4" "z3fold" ];
+  boot.kernelParams = [ "zswap.enabled=1" ];
   boot.extraModulePackages = [ ];
-
-  fileSystems."/" =
-    { device = "/dev/disk/by-uuid/fdfa3c60-4bba-4897-b80d-b37740cdc869";
-      fsType = "ext4";
-    };
-
-  boot.initrd.luks.devices."luks-7c3d58f3-fd1d-498d-a870-3ff4949bf44a".device = "/dev/disk/by-uuid/7c3d58f3-fd1d-498d-a870-3ff4949bf44a";
-
-  fileSystems."/boot/efi" =
-    { device = "/dev/disk/by-uuid/997D-D9CE";
-      fsType = "vfat";
-    };
 
   fileSystems."/hdd" =
     { device = "/dev/disk/by-uuid/40ae650a-808c-42e2-8be2-ffc899761dda";
       fsType = "ext4";
     };
 
+  fileSystems."/" =
+    { device = "none";
+      fsType = "tmpfs";
+      options = ["defaults" "size=4G" "mode=755"];
+    };
+  fileSystems."/home/tpopp" =
+    { device = "none";
+      fsType = "tmpfs";
+      options = ["defaults" "size=8G" "mode=777"];
+    };
+  fileSystems."/nix" =
+    { device = "/dev/disk/by-uuid/f49d8ce5-6f32-491c-a29b-41a7fd785904";
+      fsType = "ext4";
+      neededForBoot = true;
+    };
+
+  fileSystems."/boot" =
+    { device = "/dev/disk/by-uuid/A194-1C30";
+      fsType = "vfat";
+    };
+
+  zramSwap = {
+    enable = true;
+    memoryPercent = 20;
+    priority = 10;
+  };
   swapDevices =
-    [ { device = "/dev/disk/by-uuid/c06fac41-42fe-4cfb-a5c1-cfba5632038a"; }
+    [ { device = "/dev/disk/by-uuid/d38559e5-58d7-4c00-9663-3df93c030815"; }
     ];
+
 
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's
@@ -44,21 +60,49 @@
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
-  # high-resolution display
-  hardware.video.hidpi.enable = lib.mkDefault true;
-
-  # Enable swap on luks
-  boot.initrd.luks.devices."luks-d5183007-19ef-4d31-8e87-0eb94749ac04".device = "/dev/disk/by-uuid/d5183007-19ef-4d31-8e87-0eb94749ac04";
-  boot.initrd.luks.devices."luks-d5183007-19ef-4d31-8e87-0eb94749ac04".keyFile = "/crypto_keyfile.bin";
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.loader.efi.efiSysMountPoint = "/boot/efi";
+  boot.loader.systemd-boot.configurationLimit = 40;
+  # boot.loader.efi.efiSysMountPoint = "/boot/efi";
   boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.tmp.cleanOnBoot = true;
+  boot.tmp.useTmpfs = lib.mkDefault true;
 
-  # Setup keyfile
-  boot.initrd.secrets = {
-    "/crypto_keyfile.bin" = null;
+  boot.initrd = {
+    luks.devices."root" = {
+      device = "/dev/disk/by-uuid/e1720861-1465-4896-aef0-aaac0692ddf3";
+      preLVM = true;
+      # This ruins most of the point of encryption unless /boot is encrypted
+      keyFile = "/keyfile.bin";
+      allowDiscards = true;
+    };
+    # This ruins most of the point of encryption unless /boot is encrypted
+    secrets = {
+      "keyfile.bin" = "/etc/secrets/initrd/keyfile.bin";
+    };
   };
+
+  systemd.services.zswap-configure = {
+    description = "Configure zswap";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig.type = "oneshot";
+    script = ''
+      echo lz4 > /sys/module/zswap/paramaters/compressor
+      echo z3fold > /sys/module/zswap/paramaters/zpool
+    '';
+  };
+
+  services.xserver.videoDrivers = [ "amdgpu" ];
+  hardware.opengl.extraPackages = with pkgs; [
+    rocm-opencl-icd
+    rocm-opencl-runtime
+    amdvlk
+  ];
+  hardware.opengl.extraPackages32 = with pkgs; [
+    driversi686Linux.amdvlk
+  ];
+  hardware.opengl.driSupport = true;
+  hardware.opengl.driSupport32Bit = true;
 }

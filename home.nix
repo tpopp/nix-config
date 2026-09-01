@@ -104,6 +104,8 @@
       # Keep flatpak installed apps around between reboots
       ".cache/flatpak"
       ".local/share/flatpak"
+      "Games"
+      ".runescape"
     ];
     files = [
       ".zsh_history"
@@ -116,12 +118,13 @@
   };
 
   home.packages = with pkgs; [
-    google-chrome # Required because Google sync only works there
+    # google-chrome # Required because Google sync only works there
+    chromium
     fzf           # fuzzy finder, required by 'zsh-interactive-cd'
 
     # Filesystem tools
     fd            # `find` alternative
-    exa           # `ls` alternative
+    eza           # `ls` alternative
     tldr          # Simplified `man` with examples
     ouch          # Simplified compress/decompress
     ripgrep       # Fast recursive grep
@@ -153,6 +156,16 @@
     nodejs
     vscode 
     distrobox
+
+    jdk22
+    ( lutris.override {
+      extraPkgs = pkgs: [
+        wineWowPackages.stable
+        jdk22
+      ];
+    })
+    runelite
+    wineWowPackages.stable
   ];
 
   # Text editor based on original `vi` and better than emacs(?)

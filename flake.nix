@@ -2,8 +2,6 @@
   description = "Tres Popp's system config";
 
   inputs = {
-    nixpgs.url = "nixpkgs/nixos-unstable";
-
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -25,7 +23,9 @@
   pkgs = import nixpkgs {
     inherit system;
     config.allowUnfree = true;
-    config.permittedInsecurePackages = [ nixpkgs.google-chrome ];
+    config.permittedInsecurePackages = [ 
+      nixpkgs.google-chrome 
+    ];
     overlays = [ awsvpnclient.overlay ];
   };
 

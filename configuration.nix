@@ -55,6 +55,8 @@
   # For downloading games
   xdg.portal.enable = true;
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+  xdg.portal.config.common.default = "*";
+  
   services.flatpak.enable = true;
 
   # Enable the X11 windowing system.
@@ -68,9 +70,9 @@
   services.acpid.enable = true;
 
   # Configure keymap in X11
-  services.xserver = {
+  services.xserver.xkb = {
     layout = "us";
-    xkbVariant = "";
+    variant = "";
   };
 
   # Enable CUPS to print documents.
@@ -119,7 +121,6 @@
     hashedPassword = "$6$f41S99x6sozYJkWi$waesjKdDS7MMnICRdTSJ376ODYk/XVhfVB2Hqz9dJqBR9dq7D.0T62/8c6.cPNfgPGO0CWquHb8goEJJ98Crb/";
   };
 
-
   # Home Manager cannot control this system level setting, so set it here
   programs.zsh.enable = true;
   environment.shells = with pkgs; [ zsh ];
@@ -133,17 +134,9 @@ services.blueman.enable = true;
 services.locate = {
   enable = true;
   interval = "4h";
-  locate = pkgs.mlocate;
+  package = pkgs.mlocate;
   localuser = null; # silence warnings that this runs as root
 };
-
-  # Plex as a media server
-  services.plex = {
-    enable = true;
-    openFirewall = true;
-    # TODO: setup a better data dir without crashing process
-    dataDir = "/hdd/plex";
-  };
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
@@ -155,6 +148,7 @@ services.locate = {
     git # Needed for some nix flake stuff
     dhcpcd
     home-manager
+    dconf # Maybe needed by lutris. Unsure.
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -200,7 +194,7 @@ services.locate = {
   # };
 
 # Unstable and flakes
-nix.package = pkgs.nixUnstable;
+nix.package = pkgs.nixVersions.latest;
 nix.extraOptions = ''
 experimental-features = nix-command flakes
 '';
@@ -269,9 +263,9 @@ ${hdparm}/bin/hdparm -S 9 -B 63 /dev/sda
    # } ;
 
   # Faster timeout because plex sucks
-  systemd.extraConfig = ''
-  DefaultTimeoutStopSec=10s
-  '';
+  # systemd.extraConfig = ''
+  # DefaultTimeoutStopSec=10s
+  # '';
   programs.fuse.userAllowOther = true;
 
 

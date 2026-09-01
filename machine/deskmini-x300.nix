@@ -9,7 +9,7 @@
     ];
 
   boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usb_storage" "usbhid" "sd_mod" ];
-  boot.initrd.kernelModules = [ "dm-snapshot" "amdgpu"];
+  boot.initrd.kernelModules = [ "dm-snapshot" "amdgpu" ];
   boot.kernelModules = [ "kvm-amd" "lz4" "z3fold" ];
   boot.kernelParams = [ "zswap.enabled=1" ];
   boot.extraModulePackages = [ ];
@@ -49,14 +49,7 @@
     [ { device = "/dev/disk/by-uuid/d38559e5-58d7-4c00-9663-3df93c030815"; }
     ];
 
-
-  # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
-  # (the default) this is the recommended approach. When using systemd-networkd it's
-  # still possible to use this option, but it's recommended to use it in conjunction
-  # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
   networking.useDHCP = lib.mkDefault true;
-  # networking.interfaces.enp2s0.useDHCP = lib.mkDefault true;
-  # networking.interfaces.wlp3s0.useDHCP = lib.mkDefault true;
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
@@ -65,20 +58,17 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.systemd-boot.configurationLimit = 40;
-  # boot.loader.efi.efiSysMountPoint = "/boot/efi";
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.tmp.cleanOnBoot = true;
-  boot.tmp.useTmpfs = lib.mkDefault true;
+  boot.tmp.useTmpFS = lib.mkDefault true;
 
   boot.initrd = {
     luks.devices."root" = {
       device = "/dev/disk/by-uuid/e1720861-1465-4896-aef0-aaac0692ddf3";
       preLVM = true;
-      # This ruins most of the point of encryption unless /boot is encrypted
       keyFile = "/keyfile.bin";
       allowDiscards = true;
     };
-    # This ruins most of the point of encryption unless /boot is encrypted
     secrets = {
       "keyfile.bin" = "/etc/secrets/initrd/keyfile.bin";
     };
@@ -89,20 +79,23 @@
     wantedBy = [ "multi-user.target" ];
     serviceConfig.type = "oneshot";
     script = ''
-      echo lz4 > /sys/module/zswap/paramaters/compressor
-      echo z3fold > /sys/module/zswap/paramaters/zpool
+      echo lz4 > /sys/module/zswap/parameters/compressor
+      echo z3fold > /sys/module/zswap/parameters/zpool
     '';
   };
 
   services.xserver.videoDrivers = [ "amdgpu" ];
-  hardware.opengl.extraPackages = with pkgs; [
-    rocm-opencl-icd
-    rocm-opencl-runtime
-    amdvlk
-  ];
-  hardware.opengl.extraPackages32 = with pkgs; [
-    driversi686Linux.amdvlk
-  ];
-  hardware.opengl.driSupport = true;
-  hardware.opengl.driSupport32Bit = true;
+
+  hardware.graphics = {
+    enable = true;
+    enable32Bit = true;
+    extraPackages = with pkgs; [
+      rocm-opencl-icd
+      rocm-opencl-runtime
+      amdvlk
+    ];
+    extraPackages32 = with pkgs; [
+      driversi686Linux.amdvlk
+    ];
+  };
 }

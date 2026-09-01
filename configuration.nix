@@ -2,7 +2,7 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   imports =
@@ -16,18 +16,12 @@
       "/etc/nixos"
       "/etc/secrets"
       "/var/cache" # Forced by updatedb's implementation overwriting the file
-      "/var/lib/flatpak"
     ];
     files = [
       "/etc/machine-id"
       "/etc/nix/id_rsa"
     ];
   };
-
-  # Cleanup space for after removing persistent directories
-  nix.settings.auto-optimise-store = true;
-
-
 
   networking.hostName = "nixos"; # Define your hostname.
   # Enable networking
@@ -57,8 +51,6 @@
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   xdg.portal.config.common.default = "*";
   
-  services.flatpak.enable = true;
-
   # Enable the X11 windowing system.
   services.xserver.enable = true;
 
@@ -194,11 +186,12 @@ services.locate = {
   # };
 
 # Unstable and flakes
-nix.package = pkgs.nixVersions.latest;
-nix.extraOptions = ''
-experimental-features = nix-command flakes
-'';
-
+nix = {
+  package = pkgs.nixVersions.latest;
+  settings.experimental-features = ["nix-command" "flakes"];
+  # Cleanup space for after removing persistent directories
+  settings.auto-optimise-store = true;
+};
 
  # TODO: This isn't working properly
  # Backup tpopp files

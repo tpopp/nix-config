@@ -2,6 +2,7 @@
   description = "Tres Popp's system config";
 
   inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -11,31 +12,16 @@
       url = "github:nix-community/impermanence";
     };
 
-    awsvpnclient.url = "github:ymatsiuk/awsvpnclient";
-
   };
 
-  outputs = { self, nixpkgs, home-manager, impermanence, awsvpnclient, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, impermanence, ... }@inputs:
     let
-    inherit (nixpkgs) lib;
-
-
-  pkgs = import nixpkgs {
-    inherit system;
-    config.allowUnfree = true;
-    config.permittedInsecurePackages = [ 
-      nixpkgs.google-chrome 
-    ];
-    overlays = [ awsvpnclient.overlay ];
-  };
-
-  system = "x86_64-linux";
+      system = "x86_64-linux";
   in {
 
     homeConfigurations = {
 
       tpopp = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
         modules = [
           impermanence.nixosModules.home-manager.impermanence
           ./home.nix

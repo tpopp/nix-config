@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # Home Manager needs a bit of information about you and the
@@ -100,12 +100,6 @@
 
       # Keep ccache around between reboots
       ".ccache"
-
-      # Keep flatpak installed apps around between reboots
-      ".cache/flatpak"
-      ".local/share/flatpak"
-      "Games"
-      ".runescape"
     ];
     files = [
       ".zsh_history"
@@ -144,8 +138,6 @@
     llvmPackages_15.lld
     clang-tools
     llvmPackages_15.llvm
-    # llvm.clang    # clangd
-    # llvm.libcxx   # stdlib
     cmake
     bear
     ninja
@@ -158,14 +150,6 @@
     distrobox
 
     jdk22
-    ( lutris.override {
-      extraPkgs = pkgs: [
-        wineWowPackages.stable
-        jdk22
-      ];
-    })
-    runelite
-    wineWowPackages.stable
   ];
 
   # Text editor based on original `vi` and better than emacs(?)

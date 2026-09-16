@@ -53,17 +53,19 @@
   # git configuration
   programs.git = {
     enable = true;
-    userName = "Tres Popp";
-    userEmail = "git@tpopp.com";
-    aliases = {
+    settings.user = {
+      name = "Tres Popp";
+      email = "git@tpopp.com";
+    };
+    settings.alias = {
       cleanup = "!git fetch -p && git branch -vv | aws '/: gone]/{print $1}' | xargs --no-run-if-empty --interactive -n1 git branch -D";
     };
   };
 
   systemd.user.startServices = "sd-switch";
 
-  home.persistence."/nix/persist/home/tpopp" = {
-    allowOther = true;
+  home.persistence."/nix/persist" = {
+    hideMounts = true;
     directories = [
       "Downloads"
       "nix"
@@ -81,9 +83,6 @@
       ".cache/efreet"
 
       # Google chrome / Chromium
-      ".config/google-chrome"
-      ".cache/google-chrome"
-
       ".config/github-copilot/"
 
       # Keep ccache around between reboots
@@ -118,24 +117,20 @@
     python3
     git-extras
     nil
-    llvmPackages_15.clang
+    clang
     clangStdenv
-    llvmPackages_15.lldb
-    llvmPackages_15.lld
+    lldb
+    lld
     clang-tools
-    llvmPackages_15.llvm
+    llvm
     cmake
     bear
     ninja
     ccache
-    python3Packages.numpy
     nixpkgs-fmt
     pyright
     nodejs
-    vscode 
     distrobox
-
-    jdk22
   ];
 
   # Text editor configuration (Neovim)
@@ -147,6 +142,7 @@
     vimdiffAlias = true;
     withPython3 = true;
     withNodeJs = true;
+    withRuby = false;
 
     plugins = with pkgs.vimPlugins; [
       vim-nix
@@ -165,7 +161,7 @@
       vim-gitgutter
 
       nvim-autopairs
-      easymotion
+      vim-easymotion
       vim-commentary
       vim-multiple-cursors
       copilot-lua
@@ -192,7 +188,7 @@
       set nu rnu
     '';
 
-    extraLuaConfig = ''
+    initLua = ''
       -- telescope-vim setup
       local builtin = require('telescope.builtin')
       vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
@@ -265,7 +261,6 @@
         vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, bufopts)
         vim.keymap.set('n', 'gd', vim.lsp.buf.definition, bufopts)
         vim.keymap.set('n', 'K', vim.lsp.buf.hover, bufopts)
-        vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, bufopts)
         vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, bufopts)
         vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, bufopts)
         vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, bufopts)

@@ -10,24 +10,43 @@
 
   boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usb_storage" "usbhid" "sd_mod" ];
   boot.initrd.kernelModules = [ "dm-snapshot" "amdgpu" ];
-  boot.kernelModules = [ "kvm-amd" "lz4" "z3fold" ];
-  boot.kernelParams = [ "zswap.enabled=1" ];
+  boot.kernelModules = [ "kvm-amd" "lz4" ];
+  boot.kernelParams = [
+    "zswap.enabled=1"
+    "zswap.compressor=zstd"
+    "zswap.zpool=zsmalloc"
+    "zswap.max_pool_percent=20" # Holds up to ~6.4GB of compressed pages in RAM
+  ];
   boot.extraModulePackages = [ ];
 
-  fileSystems."/hdd" =
+  fileSystems."/data" =
     { device = "/dev/disk/by-uuid/40ae650a-808c-42e2-8be2-ffc899761dda";
       fsType = "ext4";
+      options = [ "defaults" "noatime" ];
     };
+    # 2. Bind /data onto /hdd
+  fileSystems."/hdd" = {
+    device = "/data";
+    fsType = "none";
+    options = [ "bind" ];
+  };
+  # 4. S.M.A.R.T. Platter Health Monitoring
+  services.smartd = {
+    enable = true;
+    autodetect = true;
+  };
 
   fileSystems."/" =
     { device = "none";
       fsType = "tmpfs";
       options = ["defaults" "size=4G" "mode=755"];
+      neededForBoot = true;
     };
   fileSystems."/home/tpopp" =
     { device = "none";
       fsType = "tmpfs";
       options = ["defaults" "size=8G" "mode=777"];
+      neededForBoot = true;
     };
   fileSystems."/nix" =
     { device = "/dev/disk/by-uuid/f49d8ce5-6f32-491c-a29b-41a7fd785904";
@@ -40,11 +59,6 @@
       fsType = "vfat";
     };
 
-  zramSwap = {
-    enable = true;
-    memoryPercent = 20;
-    priority = 10;
-  };
   swapDevices =
     [ { device = "/dev/disk/by-uuid/d38559e5-58d7-4c00-9663-3df93c030815"; }
     ];
@@ -60,28 +74,14 @@
   boot.loader.systemd-boot.configurationLimit = 40;
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.tmp.cleanOnBoot = true;
-  boot.tmp.useTmpFS = lib.mkDefault true;
+  boot.tmp.useTmpfs = lib.mkDefault true;
 
   boot.initrd = {
+    systemd.enable = true;
     luks.devices."root" = {
       device = "/dev/disk/by-uuid/e1720861-1465-4896-aef0-aaac0692ddf3";
-      preLVM = true;
-      keyFile = "/keyfile.bin";
       allowDiscards = true;
     };
-    secrets = {
-      "keyfile.bin" = "/etc/secrets/initrd/keyfile.bin";
-    };
-  };
-
-  systemd.services.zswap-configure = {
-    description = "Configure zswap";
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig.type = "oneshot";
-    script = ''
-      echo lz4 > /sys/module/zswap/parameters/compressor
-      echo z3fold > /sys/module/zswap/parameters/zpool
-    '';
   };
 
   services.xserver.videoDrivers = [ "amdgpu" ];
@@ -89,13 +89,23 @@
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
+
     extraPackages = with pkgs; [
-      rocm-opencl-icd
-      rocm-opencl-runtime
-      amdvlk
-    ];
-    extraPackages32 = with pkgs; [
-      driversi686Linux.amdvlk
+      # Crucial: VA-API video decode/encode drivers for AMD (Mesa RadeonSI)
+      # In modern nixpkgs (24.05+), mesa provides gallium VA-API drivers directly
+      libva-vdpau-driver
+      libvdpau-va-gl
+
+      # Compute / OpenCL (Keep this if you run ROCm / Immich machine learning)
+      rocmPackages.clr
+      rocmPackages.clr.icd
     ];
   };
+
+  # Helpful command-line tools for inspecting GPU usage & VA-API support
+  environment.systemPackages = with pkgs; [
+    libva-utils # provides `vainfo` to inspect supported codecs
+    radeontop   # top-like utility for AMD GPU engine utilization
+    clinfo      # verifies OpenCL / ROCm status
+  ];
 }
